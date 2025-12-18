@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LaughHub | Win 1k Weekly</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;900&display=swap');
+body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
+.logo-font { font-family: 'Bungee', cursive; }
+.neo-brutal { border: 4px solid black; box-shadow: 8px 8px 0px 0px rgba(0,0,0,1); }
+.active-tab { border-bottom: 4px solid #6366f1; color: #6366f1; }
+</style>
+</head>
+<body class="bg-yellow-50">
+
+<div id="auth-screen" class="fixed inset-0 bg-yellow-400 z-[100] flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-3xl neo-brutal max-w-md w-full">
+        <h1 class="logo-font text-4xl text-center mb-2 text-indigo-600">LAUGH HUB</h1>
+        <p class="text-center font-bold italic mb-6">Deposit Jokes. Withdraw Points.</p>
+        <div class="space-y-4">
+            <input id="auth-username" type="text" placeholder="Username" class="w-full p-4 border-2 border-black rounded-xl outline-none">
+            <button onclick="handleAuth()" class="w-full bg-indigo-500 text-white font-black py-4 rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1">START WINNING</button>
+        </div>
+    </div>
+</div>
+
+<nav class="sticky top-0 bg-white border-b-4 border-black z-50 px-6 py-4 flex justify-between items-center">
+    <h1 class="logo-font text-2xl text-indigo-600">LAUGH HUB</h1>
+    <div id="user-stats" class="hidden sm:flex gap-4">
+        <div class="bg-green-400 px-4 py-1 rounded-full border-2 border-black font-black text-sm">
+            💰 <span id="stat-points">0</span> PTS
+        </div>
+    </div>
+</nav>
+
+<div class="max-w-xl mx-auto p-4 pb-24">
+    <div class="flex justify-around mb-8 font-black uppercase tracking-tighter">
+        <button onclick="showTab('feed')" id="tab-feed" class="pb-2 active-tab">The Jokes</button>
+        <button onclick="showTab('leaderboard')" id="tab-lead" class="pb-2">Leaderboard</button>
+    </div>
+
+    <div id="view-feed">
+        <div class="bg-white p-6 rounded-2xl neo-brutal mb-10">
+            <textarea id="post-caption" class="w-full p-4 bg-gray-100 rounded-xl mb-4 font-bold outline-none" placeholder="What's the funny part?"></textarea>
+            <div class="flex items-center gap-4 mb-4">
+                <label class="cursor-pointer bg-indigo-100 border-2 border-indigo-600 px-4 py-2 rounded-xl font-bold text-indigo-600">
+                    <i class="fas fa-image mr-2"></i> Gallery
+                    <input type="file" id="post-image" accept="image/*" class="hidden">
+                </label>
+                <span id="file-name" class="text-xs font-bold text-gray-400">No file chosen</span>
+            </div>
+            <button onclick="createPost()" class="w-full bg-black text-white font-black py-4 rounded-xl">POST TO WIN 1K</button>
+        </div>
+
+        <div id="posts-container" class="space-y-10"></div>
+    </div>
+
+    <div id="view-leaderboard" class="hidden">
+        <div class="bg-white rounded-2xl neo-brutal p-6">
+            <h2 class="text-3xl font-black mb-6 italic text-center">TOP JOKERS</h2>
+            <div id="leaderboard-list" class="space-y-4"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Only showing the updated script part for brevity -->
+<script>
+let currentUser = null;
+
+// --- AUTH ---
+function handleAuth() {
+    const username = document.getElementById('auth-username').value.trim();
+    if(!username) return alert("Enter a username!");
+    currentUser = { username: username, points: 0 };
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('user-stats').classList.remove('hidden');
+    updatePoints();
+    loadPosts();
+}
+
+// --- POSTS ---
+function createPost() {
+    const caption = document.getElementById('post-caption').value.trim();
+    const fileInput = document.getElementById('post-image');
+    const file = fileInput.files[0];
+
+    if(!caption) return alert("Write something funny!"); // allow text-only
+
+    if(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            savePost(caption, e.target.result);
+        };
+        reader.readAsDataURL(file);
+    } else {
+        savePost(caption, null);
+    }
+    document.getElementById('post-caption').value = "";
+    fileInput.value = "";
+}
+
+function savePost(caption, image) {
+    const posts = JSON.parse(localStorage.getItem('posts') || "[]");
+    posts.unshift({
+        id: Date.now(),
+        username: currentUser.username,
+        caption,
+        image,
+        likes: 0,
+        laughs: 0,
+        comments: [],
+        timestamp: new Date().toISOString(),
+        week: getWeekKey()
+    });
+    localStorage.setItem('posts', JSON.stringify(posts));
+    loadPosts();
+}
+
+// --- LOAD POSTS ---
+function loadPosts() {
+    const posts = JSON.parse(localStorage.getItem('posts') || "[]");
+    const container = document.getElementById('posts-container');
+    container.innerHTML = "";
+    posts.forEach(p => {
+        const div = document.createElement('div');
+        div.className = "bg-white rounded-2xl neo-brutal overflow-hidden";
+        div.innerHTML = `
+            <div class="p-4 border-b-4 border-black font-black">@${p.username}</div>
+            ${p.image ? `<img src="${p.image}" class="w-full border-b-4 border-black">` : ''}
+            <div class="p-4">
+                <p class="font-bold mb-4">${p.caption}</p>
+                <div class="flex gap-4 mb-2">
+                    <button onclick="react(${p.id}, 'likes')" class="bg-blue-100 border-2 border-black p-2 rounded-xl font-black">👍 ${p.likes}</button>
+                    <button onclick="react(${p.id}, 'laughs')" class="bg-yellow-200 border-2 border-black p-2 rounded-xl font-black">😂 ${p.laughs}</button>
+                </div>
+                <div class="mb-2">
+                    <input type="text" id="comment-${p.id}" placeholder="Write a comment..." class="w-full p-2 border-2 border-black rounded-xl mb-2 outline-none">
+                    <button onclick="addComment(${p.id})" class="bg-green-400 p-2 rounded-xl font-bold border-2 border-black">COMMENT</button>
+                </div>
+                <div id="comments-${p.id}" class="ml-4 space-y-2"></div>
+            </div>
+        `;
+        container.appendChild(div);
+
+        // load comments
+        const commentsDiv = document.getElementById(`comments-${p.id}`);
+        p.comments.forEach(c => {
+            const cdiv = document.createElement('div');
+            cdiv.className = "bg-gray-100 rounded-xl p-2 border-2 border-black font-bold text-sm";
+            cdiv.textContent = `${c.username}: ${c.text}`;
+            commentsDiv.appendChild(cdiv);
+        });
+    });
+    updateLeaderboard();
+}
+
+// --- REACTIONS ---
+function react(id, type) {
+    const posts = JSON.parse(localStorage.getItem('posts') || "[]");
+    const post = posts.find(p => p.id === id);
+    if(!post) return;
+    post[type]++;
+    localStorage.setItem('posts', JSON.stringify(posts));
+    loadPosts();
+}
+
+// --- COMMENTS ---
+function addComment(postId) {
+    const input = document.getElementById(`comment-${postId}`);
+    const text = input.value.trim();
+    if(!text) return;
+    const posts = JSON.parse(localStorage.getItem('posts') || "[]");
+    const post = posts.find(p => p.id === postId);
+    post.comments.push({ username: currentUser.username, text });
+    localStorage.setItem('posts', JSON.stringify(posts));
+    input.value = "";
+    loadPosts();
+}
+
+// --- LEADERBOARD ---
+function updateLeaderboard() {
+    const posts = JSON.parse(localStorage.getItem('posts') || "[]");
+    const scores = {};
+    posts.forEach(p => { 
+        scores[p.username] = (scores[p.username] || 0) + p.likes + p.laughs;
+    });
+    const sorted = Object.entries(scores).sort((a,b) => b[1]-a[1]);
+    const lb = document.getElementById('leaderboard-list');
+    lb.innerHTML = "";
+    sorted.forEach(([user, pts]) => {
+        const div = document.createElement('div');
+        div.className = "bg-gray-100 p-2 rounded-xl font-bold border-2 border-black";
+        div.textContent = `${user} — ${pts} points`;
+        lb.appendChild(div);
+    });
+}
+
+// --- UTILS ---
+function getWeekKey() {
+    const d = new Date();
+    return d.getFullYear() + "-" + Math.ceil(d.getDate()/7);
+}
+
+function showTab(tab) {
+    document.getElementById('view-feed').classList.toggle('hidden', tab !== 'feed');
+    document.getElementById('view-leaderboard').classList.toggle('hidden', tab !== 'leaderboard');
+}
+
+function updatePoints() {
+    document.getElementById('stat-points').textContent = currentUser.points;
+}
+
+// --- INIT ---
+window.onload = () => {
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    if(user) {
+        currentUser = user;
+        document.getElementById('auth-screen').classList.add('hidden');
+        document.getElementById('user-stats').classList.remove('hidden');
+        updatePoints();
+        loadPosts();
+    }
+};
+</script>
+
+</body>
+</html>
